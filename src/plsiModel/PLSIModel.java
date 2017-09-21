@@ -5,7 +5,7 @@ import java.util.Random;
 
 public class PLSIModel {
 	private HashMap<Integer, HashMap<Integer, Integer>> dataSet;
-	private int nOfTopics, nOfWords, nOfDocs;
+	private int nOfTopics, nOfUniqueWords, nOfDocs;
 	private double[][] pDZ;
 	private double[][] pWZ;
 	private double[] pZ;
@@ -19,132 +19,132 @@ public class PLSIModel {
 		dataSet = inputData;
 		this.nOfDocs = nOfDocs;
 		this.nOfTopics = nOfTopics;
-		this.nOfWords = nOfWords;
+		this.nOfUniqueWords = nOfWords;
 		pZ = new double[nOfTopics];
-		pDZ = new double[nOfDocs][nOfTopics];
-		pWZ = new double[nOfWords][nOfTopics];
-		pZDW = new double[nOfTopics][nOfDocs][nOfWords];
-		
-	}
-	public double[][][] getLearntTheta() {
-		return pZDW;
-	}
-	public void trainingModel() {
-		double sum;
-		for (int i = 0; i < 20; i++) {
+		pDZ = new double[nOfTopics][];
+		pWZ = new double[nOfTopics][];
+		pZDW = new double[nOfTopics][nOfDocs][nOfUniqueWords];
 
+	}
+
+	public void trainingModel() {
+
+		double llhood;
+		double newllhood = getLikelihood();
+		int loop = 0;
+		do{
+			loop++;
+			llhood = newllhood;
 			// E-step: Expectation step
-			System.out.println("+ E step:");
+			// System.out.println("+ E step:");
 			for (int d = 0; d < nOfDocs; d++) {
-				for (int w = 0; w < nOfWords; w++) {
+				for (int w = 0; w < nOfUniqueWords; w++) {
 					if (!dataSet.get(d).containsKey(w))
 						continue;
-					sum = 0;
+					double sum = 0;
 					for (int z = 0; z < nOfTopics; z++) {
-						
-						pZDW[z][d][w] = pZ[z] * pDZ[d][z] * pWZ[w][z];
+
+						pZDW[z][d][w] = pZ[z] * pDZ[z][d] * pWZ[z][w];
 						sum += pZDW[z][d][w];
 					}
 					for (int z = 0; z < nOfTopics; z++) {
 						pZDW[z][d][w] /= sum;
-						//System.out.println(pZDW[z][d][w]);
+
 					}
 				}
 			}
-
+			pZ = new double[nOfTopics];
+			pDZ = new double[nOfTopics][nOfDocs];
+			pWZ = new double[nOfTopics][nOfUniqueWords];
+			
 			// M-step: Maximization step
-			System.out.println("+ M step:");
-			// update p(w|z) = sum_d(n(d, w)*p(z|d, w))/sum_d(sum_w(n(d, w')*p(z|d, w')))
+			// System.out.println("+ M step:");
 			for (int z = 0; z < nOfTopics; z++) {
-				sum = 0;
-				for (int w = 0; w < nOfWords; w++) {
+				double sum = 0;
+				double sumZ = 0;
+				for (int w = 0; w < nOfUniqueWords; w++) {
 					for (int d = 0; d < nOfDocs; d++) {
 						if (!dataSet.get(d).containsKey(w))
 							continue;
-						pWZ[w][z] += dataSet.get(d).get(w) * pZDW[z][d][w];
-					
+
+						double term = dataSet.get(d).get(w) * pZDW[z][d][w];
+						// p(w|z) = sum_d(n(d, w)*p(z|d, w))
+						pWZ[z][w] += term;
+
+						// p(d|z) = sum_w(n(d, w')*p(z|d, w'))
+						pDZ[z][d] += term;
+						sum += term;
+
+						// p(z) = sum(sum(n(d', w')P(z|d',w'))
+
+						sumZ += dataSet.get(d).get(w);
 					}
-					sum += pWZ[w][z];
-					
-				
 				}
-				for (int w = 0; w < nOfWords; w++) {
-					
-					pWZ[w][z] /= sum;
-					
-				}
-
-			}
-
-			// update p(d|z) = sum(n(d, w')*p(z|d, w'))/sum(n(d', w')*p(z|d', w'))
-			for (int z = 0; z < nOfTopics; z++) {
-				sum = 0;
+				// update p(d|z) = sum(n(d, w')*p(z|d, w'))/sum(n(d', w')*p(z|d', w'))
 				for (int d = 0; d < nOfDocs; d++) {
-					for (int w = 0; w < nOfWords; w++) {
-						if (!dataSet.get(d).containsKey(w))
-							continue;
-						pDZ[d][z] += dataSet.get(d).get(w) * pZDW[z][d][w];
-					}
-					sum += pDZ[d][z];
+					pDZ[z][d] /= sum;
 				}
-				for (int d = 0; d < nOfDocs; d++) {
-					
-					pDZ[d][z] /= sum;
-				}
-			}
-			// update p(z) = sum(sum(n(d', w')P(z|d',w'))
-			for(int z = 0; z<nOfTopics; z++) {
-				sum = 0;
-				for(int d = 0; d<nOfDocs; d++) {
-					for(int w = 0; w<nOfWords; w++) {
-						if(!dataSet.get(d).containsKey(w))
-							continue;
-						pZ[z] += dataSet.get(d).get(w) * pZDW[z][d][w];
-						sum+= dataSet.get(d).get(w);
-					}
-				}
-				pZ[z] /= sum;
-			}
 
-		}
+				// update p(w|z) = sum_d(n(d, w)*p(z|d, w))/sum_d(sum_w(n(d, w')*p(z|d, w')))
+				for (int w = 0; w < nOfUniqueWords; w++) {
+					pWZ[z][w] /= sum;
+				}
+				// update p(z) = sum(sum(n(d', w')P(z|d',w'))/sum(sum(n(d', w')))
+				pZ[z] = sum / sumZ;
+			}
+			newllhood = getLikelihood();
+			//System.out.println("likelihood: "+llhood+"\t"+newllhood);
+		}while(Math.abs(llhood - newllhood) >0.01);
+		//System.out.println("number of loops until convergence: "+loop);
 
 	}
-
+	
+	
+	public void _trainingModel() {
+		
+	}
 	public void init() {
-		Random ran = new Random();
-		double sum;
-
 		// init p(z)
-		for (int z = 0; z < nOfTopics; z++) {
-			pZ[z] = (double)1 / nOfTopics;
-		}
+		pZ = getRandomProbabilities(nOfTopics);
 
 		// int pDZ
 		for (int z = 0; z < nOfTopics; z++) {
-			sum = 0;
-			for (int d = 0; d < nOfDocs; d++) {
-				pDZ[d][z] = ran.nextDouble();
-				sum += pDZ[d][z];
-			}
-			for (int d = 0; d < nOfDocs; d++) {
-				pDZ[d][z] /= sum;
-			}
+			pDZ[z] = getRandomProbabilities(nOfDocs);
+			pWZ[z] = getRandomProbabilities(nOfUniqueWords);
 
 		}
-		// init p(w|z),for each topic the constraint is sum(p(w|z))=1.0
-		for (int z = 0; z < nOfTopics; z++) {
-			sum = 0;
-			for (int w = 0; w < nOfWords; w++) {
-				pWZ[w][z] = ran.nextDouble();
-				sum += pWZ[w][z];
-			}
-			for (int w = 0; w < nOfWords; w++) {
-				pWZ[w][z] /= sum;
-			}
-		}
-
 	}
 
+	public double[] getRandomProbabilities(int dimension) {
+		Random rand = new Random();
+		double[] probs = new double[dimension];
+		double sum = 0;
+		for (int i = 0; i < dimension; i++) {
+			probs[i] = rand.nextDouble();
+			sum += probs[i];
+		}
+		for (int i = 0; i < dimension; i++) {
+			probs[i] /= sum;
+		}
+
+		return probs;
+	}
+	public double getLikelihood() {
+		double result = 0;
+		for(int d =0; d< nOfDocs; d++) {
+			for(int w = 0; w<nOfUniqueWords; w++) {
+				double sum = 0;
+				for(int z = 0; z<nOfTopics; z++) {
+					sum += pZ[z] *pDZ[z][d] * pWZ[z][w];
+				}
+				if(!dataSet.get(d).containsKey(w))
+					continue;
+				result += Math.log(sum)*dataSet.get(d).get(w);
+				
+			}
+		}
+		return result;
+	}
 	public void printParameters() {
 		System.out.println("PZ:");
 		for (int i = 0; i < nOfTopics; i++)
@@ -153,15 +153,44 @@ public class PLSIModel {
 		System.out.println("PDZ:");
 		for (int i = 0; i < nOfDocs; i++) {
 			for (int j = 0; j < nOfTopics; j++) {
-				System.out.print(pDZ[i][j] + "\t");
+				System.out.print(pDZ[j][i] + "\t");
 			}
 			System.out.println();
 		}
-		for (int i = 0; i < nOfWords; i++) {
+		for (int i = 0; i < nOfUniqueWords; i++) {
 			for (int j = 0; j < nOfTopics; j++) {
-				System.out.print(pWZ[i][j] + "\t");
+				System.out.print(pWZ[j][i] + "\t");
 			}
 			System.out.println();
 		}
+	}
+
+	public double[][] getPWZ() {
+		return pWZ;
+	}
+
+	public double[] getPD() {
+		double[] pD = new double[nOfDocs];
+		for (int d = 0; d < nOfDocs; d++) {
+			for (int z = 0; z < nOfTopics; z++) {
+				pD[d] += pDZ[z][d] * pZ[z];
+			}
+		}
+		return pD;
+	}
+
+	public double[][] getPZD() {
+		double pZD[][] = new double[nOfTopics][nOfDocs];
+		double[] pD = getPD();
+		for (int z = 0; z < nOfTopics; z++) {
+			for (int d = 0; d < nOfDocs; d++) {
+				pZD[z][d] = pDZ[z][d] *pZ[z]/ pD[d];
+			}
+		}
+		return pZD;
+	}
+	
+	public double[][] getPDZ() {
+		return pDZ;
 	}
 }
