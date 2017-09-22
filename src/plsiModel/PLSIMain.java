@@ -1,6 +1,5 @@
 package plsiModel;
 
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -17,56 +16,57 @@ public class PLSIMain {
 		// HashSet<Integer> topics = new HashSet<Integer>();
 		HashMap<Integer, HashMap<Integer, Integer>> dataSet = new HashMap<Integer, HashMap<Integer, Integer>>();
 
-		//System.out.println("Generate synthetic data: ");
+		// System.out.println("Generate synthetic data: ");
 		getSyntheticData(dataSet, pDocs, pZD, pWZ, nOfTopics, nOfDocs, nOfWords, 10000);
-		//printDataset(dataSet);
+		// printDataset(dataSet);
 
-		
 		PLSIModel plsi = new PLSIModel(dataSet, nOfWords, nOfTopics, nOfDocs);
 		plsi.init();
 
 		plsi.trainingModel();
-		
+
 		double[] learntPD = plsi.getPD();
 
-		
 		double[][] learntPZD = plsi.getPZD();
-		
-	
-		double[][] learntPWZ = plsi.getPWZ();
-		
 
-		
+		double[][] learntPWZ = plsi.getPWZ();
+
 		System.out.println("KL divergence between pDs: " + evaluate(learntPD, pDocs));
-		System.out.println("KL divergence between pZDs: "+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPZD), getOneDimenArrFromTwoDimensionArr(pZD)));
-		System.out.println("KL divergence between pWZs: "+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPWZ), getOneDimenArrFromTwoDimensionArr(pWZ)));
-		
+		// Tuan-Anh: have to match learnt & groundtruth topics before measuring
+		// the goodness
+		System.out.println("KL divergence between pZDs: "
+				+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPZD), getOneDimenArrFromTwoDimensionArr(pZD)));
+		System.out.println("KL divergence between pWZs: "
+				+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPWZ), getOneDimenArrFromTwoDimensionArr(pWZ)));
+
 	}
+
 	public static double[] getOneDimenArrFromTwoDimensionArr(double[][] matrix) {
 		double[] array = new double[matrix.length * matrix[0].length];
 		int k = 0;
-		for(int i = 0; i<matrix.length; i++) {
-			for(int j = 0; j<matrix[0].length; j++) {
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
 				array[k++] = matrix[i][j];
 			}
 		}
-		
+
 		return array;
 	}
-	
-	public static double  evaluate(double[][] learntArray, double[][] groundTruth) {
+
+	public static double evaluate(double[][] learntArray, double[][] groundTruth) {
 		double result = 0;
-		for(int i = 0; i<learntArray.length; i++) {
-			for(int j = 0; j<learntArray[0].length; j++) {
-				result += groundTruth[i][j] * Math.log(groundTruth[i][j]/learntArray[i][j]);
+		for (int i = 0; i < learntArray.length; i++) {
+			for (int j = 0; j < learntArray[0].length; j++) {
+				result += groundTruth[i][j] * Math.log(groundTruth[i][j] / learntArray[i][j]);
 			}
 		}
 		return result;
 	}
+
 	public static double evaluate(double[] learntParameters, double[] groundTruth) {
 		double klMeasure = 0;
-		for(int i = 0; i< groundTruth.length; i++) {
-			klMeasure += groundTruth[i]*Math.log(groundTruth[i]/learntParameters[i]);
+		for (int i = 0; i < groundTruth.length; i++) {
+			klMeasure += groundTruth[i] * Math.log(groundTruth[i] / learntParameters[i]);
 		}
 		return klMeasure;
 	}
@@ -159,8 +159,8 @@ public class PLSIMain {
 
 		// select a document with a random probability
 		for (int d = 0; d < nOfDocs; d++) {
-			pDocs[d] = (double)1 / nOfDocs;
-		
+			pDocs[d] = (double) 1 / nOfDocs;
+
 		}
 
 		// pick a latent class with a random probability
