@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import edu.princeton.cs.algs4.AssignmentProblem;
+
 public class PLSIMain {
 	public static void main(String[] args) {
 
@@ -19,7 +21,7 @@ public class PLSIMain {
 		// System.out.println("Generate synthetic data: ");
 		getSyntheticData(dataSet, pDocs, pZD, pWZ, nOfTopics, nOfDocs, nOfWords, 10000);
 		// printDataset(dataSet);
-
+		
 		PLSIModel plsi = new PLSIModel(dataSet, nOfWords, nOfTopics, nOfDocs);
 		plsi.init();
 
@@ -30,40 +32,57 @@ public class PLSIMain {
 		double[][] learntPZD = plsi.getPZD();
 
 		double[][] learntPWZ = plsi.getPWZ();
-
-		System.out.println("KL divergence between pDs: " + evaluate(learntPD, pDocs));
-		// Tuan-Anh: have to match learnt & groundtruth topics before measuring
-		// the goodness
-		System.out.println("KL divergence between pZDs: "
-				+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPZD), getOneDimenArrFromTwoDimensionArr(pZD)));
-		System.out.println("KL divergence between pWZs: "
-				+ evaluate(getOneDimenArrFromTwoDimensionArr(learntPWZ), getOneDimenArrFromTwoDimensionArr(pWZ)));
+		
+		
+		System.out.println("KL divergence between pDs: "+ getKLConvergence(learntPD, pDocs));
+		AssignmentProblem bestAssignment = new AssignmentProblem(computeCostMatrix(learntPWZ, pWZ));
+		System.out.println("KL divergence between PZWs: "+ bestAssignment.weight());
+			
+		
+		bestAssignment =  new AssignmentProblem(computeCostMatrix(getTransposeMatrix(learntPZD), getTransposeMatrix(pZD)));
+		System.out.printf("KL divergence between pZDs: %f\n", bestAssignment.weight());
+	
+		
 
 	}
-
-	public static double[] getOneDimenArrFromTwoDimensionArr(double[][] matrix) {
-		double[] array = new double[matrix.length * matrix[0].length];
-		int k = 0;
-		for (int i = 0; i < matrix.length; i++) {
-			for (int j = 0; j < matrix[0].length; j++) {
-				array[k++] = matrix[i][j];
+	
+	
+	/**
+	 * 
+	 * @param aMatrix
+	 * @param bMatrix
+	 * @return cost matrix of KL divergence between topic distributions
+	 */
+	public static double[][] computeCostMatrix(double[][] aMatrix, double[][] bMatrix) {
+		int n = aMatrix.length;
+		double[][] weight = new double[n][n];
+		
+		for(int i = 0; i< n; i++) {
+			for(int j = 0; j<n; j++) {
+				weight[i][j] = getKLConvergence(aMatrix[i], bMatrix[j]);
+				System.out.print(weight[i][j]+"\t");
 			}
+			System.out.println();
 		}
-
-		return array;
+		
+		return weight;
 	}
-
-	public static double evaluate(double[][] learntArray, double[][] groundTruth) {
-		double result = 0;
-		for (int i = 0; i < learntArray.length; i++) {
-			for (int j = 0; j < learntArray[0].length; j++) {
-				result += groundTruth[i][j] * Math.log(groundTruth[i][j] / learntArray[i][j]);
+	/**
+	 * 
+	 * @param matrix: input matrix
+	 * @return transpose of the input matrix
+	 */
+	public static double[][] getTransposeMatrix(double[][] matrix) {
+		double[][] result = new double[matrix[0].length][matrix.length];
+		for(int i = 0; i<matrix.length; i++) {
+			for(int j = 0; j<matrix[0].length; j++) {
+				result[j][i] = matrix[i][j];
 			}
 		}
 		return result;
 	}
 
-	public static double evaluate(double[] learntParameters, double[] groundTruth) {
+	public static double getKLConvergence(double[] learntParameters, double[] groundTruth) {
 		double klMeasure = 0;
 		for (int i = 0; i < groundTruth.length; i++) {
 			klMeasure += groundTruth[i] * Math.log(groundTruth[i] / learntParameters[i]);
