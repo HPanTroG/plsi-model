@@ -36,11 +36,11 @@ public class PLSIMain {
 		
 		System.out.println("KL divergence between pDs: "+ getKLConvergence(learntPD, pDocs));
 		AssignmentProblem bestAssignment = new AssignmentProblem(computeCostMatrix(learntPWZ, pWZ));
-		System.out.println("KL divergence between PZWs: "+ bestAssignment.weight());
+		System.out.println("Euclidean distance between PZWs: "+ bestAssignment.weight());
 			
 		
 		bestAssignment =  new AssignmentProblem(computeCostMatrix(getTransposeMatrix(learntPZD), getTransposeMatrix(pZD)));
-		System.out.printf("KL divergence between pZDs: %f\n", bestAssignment.weight());
+		System.out.printf("Euclidean distance between pZDs: %f\n", bestAssignment.weight());
 	
 		
 
@@ -59,7 +59,7 @@ public class PLSIMain {
 		
 		for(int i = 0; i< n; i++) {
 			for(int j = 0; j<n; j++) {
-				weight[i][j] = getKLConvergence(aMatrix[i], bMatrix[j]);
+				weight[i][j] = getEuclideanDistance(aMatrix[i], bMatrix[j]);
 				System.out.print(weight[i][j]+"\t");
 			}
 			System.out.println();
@@ -82,6 +82,21 @@ public class PLSIMain {
 		return result;
 	}
 
+	public static double getEuclideanDistance(double[] firstVector, double[] secondVector) {
+		double result = 0;
+		
+		for(int i = 0; i<firstVector.length; i++) {
+			result+=Math.pow(firstVector[i] - secondVector[i], 2);
+		}
+		
+		return Math.sqrt(result);
+	}
+	/**
+	 * 
+	 * @param learntParameters
+	 * @param groundTruth
+	 * @return KL distance between 2 distributions
+	 */
 	public static double getKLConvergence(double[] learntParameters, double[] groundTruth) {
 		double klMeasure = 0;
 		for (int i = 0; i < groundTruth.length; i++) {

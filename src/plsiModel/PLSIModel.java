@@ -3,7 +3,13 @@ package plsiModel;
 import java.util.HashMap;
 import java.util.Random;
 
+/**
+ * 
+ * pZDW[z][d][w] = p(z|d, w)
+ * 
+ */
 public class PLSIModel {
+
 	private HashMap<Integer, HashMap<Integer, Integer>> dataSet;
 	private int nOfTopics, nOfUniqueWords, nOfDocs;
 	private double[][] pDZ;
@@ -27,13 +33,15 @@ public class PLSIModel {
 		pZ = new double[nOfTopics];
 		pDZ = new double[nOfTopics][];
 		pWZ = new double[nOfTopics][];
-
-		// Tuan-Anh: the range of the third dimension should not be the same for
-		// all docs
-		// Should declare pZDW[z][d] according to #unique words in doc d so that
-		// to save memory
-
-		pZDW = new double[nOfTopics][nOfDocs][nOfUniqueWords];
+		pZDW = new double[nOfTopics][nOfDocs][];
+		
+		// declare pZDW[z][d] according to #unique words in doc d 
+		
+		for(int i = 0; i<nOfTopics; i++) {
+			for(int j = 0; j< nOfDocs; j++) {
+				pZDW[i][j] = new double[dataSet.get(j).size()]; 
+			}
+		}
 
 	}
 
@@ -48,15 +56,14 @@ public class PLSIModel {
 			// E-step: Expectation step
 			// System.out.println("+ E step:");
 			for (int d = 0; d < nOfDocs; d++) {
-				// Tuan-Anh: iterating over all vocabulary is expensive
-				// just need to iterate over all unique words in doc d
-				for (int w = 0; w < nOfUniqueWords; w++) {
-					if (!dataSet.get(d).containsKey(w))
-						continue;
+				
+				// iterate over all unique words in doc d
+				Object[] dwSet = dataSet.get(d).keySet().toArray();
+				for (int w = 0; w < dataSet.get(d).size(); w++) {
 					double sum = 0;
 					for (int z = 0; z < nOfTopics; z++) {
 
-						pZDW[z][d][w] = pZ[z] * pDZ[z][d] * pWZ[z][w];
+						pZDW[z][d][w] = pZ[z] * pDZ[z][d] * pWZ[z][(int)dwSet[w]];
 						sum += pZDW[z][d][w];
 					}
 					for (int z = 0; z < nOfTopics; z++) {
@@ -74,15 +81,14 @@ public class PLSIModel {
 				double sum = 0;
 				double sumZ = 0;
 				for (int d = 0; d < nOfDocs; d++) {
-					// Tuan-Anh: iterating over all vocabulary is expensive
-					// just need to iterate over all unique words in doc d
-					for (int w = 0; w < nOfUniqueWords; w++) {
-						if (!dataSet.get(d).containsKey(w))
-							continue;
+					//  iterate over all unique words in doc d
+					Object[] dwSet = dataSet.get(d).keySet().toArray();
+					for (int w = 0; w < dataSet.get(d).size(); w++) {
+						
 
-						double term = dataSet.get(d).get(w) * pZDW[z][d][w];
+						double term = dataSet.get(d).get(dwSet[w]) * pZDW[z][d][w];
 						// p(w|z) = sum_d(n(d, w)*p(z|d, w))
-						pWZ[z][w] += term;
+						pWZ[z][(int)dwSet[w]] += term;
 
 						// p(d|z) = sum_w(n(d, w')*p(z|d, w'))
 						pDZ[z][d] += term;
@@ -90,7 +96,7 @@ public class PLSIModel {
 
 						// p(z) = sum(sum(n(d', w')P(z|d',w'))
 
-						sumZ += dataSet.get(d).get(w);
+						sumZ += dataSet.get(d).get(dwSet[w]);
 					}
 				}
 				// update p(d|z) = sum(n(d, w')*p(z|d, w'))/sum(n(d',
@@ -113,10 +119,6 @@ public class PLSIModel {
 			System.out.printf("[%d] likelihood: current = %f\t new = %f\n", loop, llhood, newllhood);
 		} while (Math.abs(llhood - newllhood) > 0.01 && loop < 20);
 		// System.out.println("number of loops until convergence: "+loop);
-
-	}
-
-	public void _trainingModel() {
 
 	}
 
@@ -150,16 +152,17 @@ public class PLSIModel {
 	public double getLikelihood() {
 		double result = 0;
 		for (int d = 0; d < nOfDocs; d++) {
-			// Tuan-Anh: iterating over all vocabulary is expensive
-			// just need to iterate over all unique words in doc d
-			for (int w = 0; w < nOfUniqueWords; w++) {
+			//  iterate over all unique words in doc d
+			Object[] dwSet = dataSet.get(d).keySet().toArray();
+			for (int w = 0; w < dataSet.get(d).size(); w++) {
+				
+				
 				double sum = 0;
 				for (int z = 0; z < nOfTopics; z++) {
-					sum += pZ[z] * pDZ[z][d] * pWZ[z][w];
+					sum += pZ[z] * pDZ[z][d] * pWZ[z][(int)dwSet[w]];
 				}
-				if (!dataSet.get(d).containsKey(w))
-					continue;
-				result += Math.log(sum) * dataSet.get(d).get(w);
+				
+				result += Math.log(sum) * dataSet.get(d).get(dwSet[w]);
 
 			}
 		}
